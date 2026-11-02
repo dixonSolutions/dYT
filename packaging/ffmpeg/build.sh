@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # A small LGPL ffmpeg for dYT. The app only ever demuxes, cuts and remuxes with `-c copy`, so
-# this build has no encoders, no decoders, no network and no device access: the MP4,
-# WebM/Matroska and Ogg (de)muxers, the parsers and bitstream filters stream copy needs, and
-# file I/O. A few MB instead of ~80.
+# this build has no encoders, no network and no device access: the MP4, WebM/Matroska and Ogg
+# (de)muxers, the parsers and bitstream filters stream copy needs, and file I/O. The only
+# decoders are VP9 and Opus, and only so ffmpeg can read their stream parameters (VP9's pixel
+# format, Opus's frame size): without them the MP4 muxer writes a broken VP9 track while
+# still exiting 0. H.264, HEVC and AV1 get theirs from their parsers. A few MB instead of ~80.
 #
 #   packaging/ffmpeg/build.sh <target> <out-dir>
 #
@@ -52,6 +54,7 @@ common=(
 	--enable-demuxer=mov,matroska,ogg,aac
 	--enable-muxer=mp4,mov,ipod,matroska,webm,ogg,opus,adts
 	--enable-parser=h264,hevc,vp9,av1,aac,opus,vorbis
+	--enable-decoder=vp9,opus
 	--enable-bsf=aac_adtstoasc,vp9_superframe,vp9_superframe_split,av1_frame_split,av1_frame_merge,extract_extradata,h264_mp4toannexb,hevc_mp4toannexb,null
 	--enable-filter=null,anull,aresample,format,aformat,trim,atrim,setpts,asetpts
 )

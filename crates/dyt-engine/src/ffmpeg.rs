@@ -135,8 +135,45 @@ pub async fn run(ffmpeg: &Path, args: &[String], cancel: &CancellationToken, mut
     Ok(())
 }
 
+/// The duration ffmpeg reads back from a file it wrote, or `None` when it can't (a broken file).
+pub async fn duration(ffmpeg: &Path, file: &Path) -> Option<f64> {
+    let out = Command::new(ffmpeg).args(["-hide_banner", "-nostdin", "-i"]).arg(file).stdin(Stdio::null()).output().await.ok()?;
+    parse_duration(&String::from_utf8_lossy(&out.stderr))
+}
+
+pub(crate) fn parse_duration(stderr: &str) -> Option<f64> {
+    let d = stderr.split("Duration: ").nth(1)?.split(',').next()?.trim();
+    let p: Vec<f64> = d.split(':').map(|x| x.parse().ok()).collect::<Option<_>>()?;
+    let t = match p.as_slice() {
+        [h, m, s] => h * 3600.0 + m * 60.0 + s,
+        _ => return None,
+    };
+    (t > 0.0).then_some(t)
+}
+
+/// Run ffmpeg and make sure what it wrote is whole: ffmpeg can log a muxing error and still
+/// exit 0 with a broken file, so the output's duration must match what was asked for.
+pub async fn run_checked(ffmpeg: &Path, args: &[String], out: &Path, expected: f64, cancel: &CancellationToken, on_progress: impl FnMut(f64)) -> Result<()> {
+    run(ffmpeg, args, cancel, on_progress).await?;
+    let got = duration(ffmpeg, out).await;
+    let slack = (expected * 0.02).max(1.0);
+    match got {
+        Some(d) if (d - expected).abs() <= slack => Ok(()),
+        Some(d) => Err(Error::Ffmpeg(format!("the file came out {d:.1} s long instead of {expected:.1} s"))),
+        None => Err(Error::Ffmpeg("the file it wrote can't be read back".into())),
+    }
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn durations() {
+        assert_eq!(super::parse_duration("  Duration: 00:03:33.06, start: 0.000000, bitrate"), Some(213.06));
+        assert_eq!(super::parse_duration("  Duration: N/A, bitrate: N/A"), None);
+        assert_eq!(super::parse_duration("  Duration: 00:00:00.00, start"), None);
+        assert_eq!(super::parse_duration("nothing"), None);
+    }
+
     use super::*;
 
     #[test]

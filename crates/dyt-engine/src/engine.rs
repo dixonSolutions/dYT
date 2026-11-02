@@ -607,7 +607,7 @@ impl Engine {
                     let ext = if *kind == 'v' { select::output_ext(Some(f), None, true) } else { select::output_ext(None, Some(f), true) };
                     let tmp = work.path.join(format!("out-{kind}.{ext}"));
                     let args = ffmpeg::args(&[Input { path: &t.path, stream: *kind }], Some(cut), Some(&meta), &tmp);
-                    ffmpeg::run(ff, &args, &cancel, |t| report_merge(t / duration)).await?;
+                    ffmpeg::run_checked(ff, &args, &tmp, duration, &cancel, |t| report_merge(t / duration)).await?;
                     files.push(place(&tmp, &req.dir, &s, ext)?);
                 } else {
                     files.push(place(&t.path, &req.dir, &s, f.raw_ext())?);
@@ -618,7 +618,7 @@ impl Engine {
             let tmp = work.path.join(format!("out.{ext}"));
             let inputs: Vec<Input> = targets.iter().zip(&streams).map(|(t, (_, k))| Input { path: &t.path, stream: *k }).collect();
             let args = ffmpeg::args(&inputs, cut.as_ref(), Some(&meta), &tmp);
-            ffmpeg::run(ff, &args, &cancel, |t| report_merge(t / duration)).await?;
+            ffmpeg::run_checked(ff, &args, &tmp, duration, &cancel, |t| report_merge(t / duration)).await?;
             files.push(place(&tmp, &req.dir, &stem, &ext)?);
         } else {
             // A single stream and no ffmpeg: the downloaded file is already playable.
