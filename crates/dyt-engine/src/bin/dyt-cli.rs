@@ -37,6 +37,11 @@ async fn main() -> ExitCode {
         log::set_max_level(log::LevelFilter::Debug);
     }
     let args: Vec<String> = std::env::args().skip(1).collect();
+    // The built-in client list as JSON: the source of the published clients.json.
+    if args.first().map(String::as_str) == Some("clients") {
+        println!("{}", serde_json::to_string_pretty(&dyt_engine::innertube::default_clients()).unwrap());
+        return ExitCode::SUCCESS;
+    }
     let (Some(cmd), Some(link)) = (args.first(), args.get(1)) else { return usage() };
     let mut config = EngineConfig::default();
     let flag = |name: &str| args.iter().position(|a| a == name).and_then(|i| args.get(i + 1)).cloned();

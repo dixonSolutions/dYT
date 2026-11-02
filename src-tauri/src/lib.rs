@@ -193,6 +193,30 @@ fn platform(state: State<'_, AppState>) -> Platform {
     Platform { os: std::env::consts::OS, ffmpeg: engine(&state).ffmpeg().is_some(), version: env!("CARGO_PKG_VERSION") }
 }
 
+/// YouTube's clients change; the project publishes the current list as clients.json so a fix
+/// reaches installed apps without an update. The cached copy applies at once, a fresh one when
+/// it arrives; anything malformed is ignored and the built-in list stays.
+fn update_clients(app: AppHandle) {
+    const URL: &str = "https://dixonsolutions.github.io/dYT/clients.json";
+    let cache = app.path().app_data_dir().map(|d| d.join("clients.json")).ok();
+    if let Some(list) = cache.as_ref().and_then(|c| std::fs::read_to_string(c).ok()).and_then(|j| dyt_engine::innertube::clients_from_json(&j).ok()) {
+        engine(&app.state::<AppState>()).set_clients(list);
+    }
+    tauri::async_runtime::spawn(async move {
+        let engine = engine(&app.state::<AppState>());
+        let fetch = async {
+            let body = engine.fetch_text(URL).await.ok()?;
+            dyt_engine::innertube::clients_from_json(&body).ok().map(|l| (l, body))
+        };
+        if let Some((list, body)) = fetch.await {
+            engine.set_clients(list);
+            if let Some(c) = cache {
+                std::fs::write(c, body).ok();
+            }
+        }
+    });
+}
+
 /// The link the app was opened with, once.
 #[tauri::command]
 fn take_pending_link(state: State<'_, AppState>) -> Option<String> {
@@ -239,6 +263,7 @@ pub fn run() {
                 pending_link: Mutex::new(link_from_args(&args)),
             });
             theme::watch(app.handle().clone());
+            update_clients(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

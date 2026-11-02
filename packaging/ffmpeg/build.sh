@@ -23,14 +23,25 @@ mkdir -p "$WORK" "$OUT"
 SRC=$WORK/ffmpeg-$VERSION
 if [ ! -d "$SRC" ]; then
 	tarball=$WORK/ffmpeg-$VERSION.tar.xz
-	[ -f "$tarball" ] || curl -fL --retry 3 -o "$tarball" "https://ffmpeg.org/releases/ffmpeg-$VERSION.tar.xz"
-	# Pinned in packaging/ffmpeg/SHA256SUMS once known; a mismatch stops the build.
-	if grep -q "ffmpeg-$VERSION.tar.xz" "$HERE/SHA256SUMS" 2>/dev/null; then
-		(cd "$WORK" && grep "ffmpeg-$VERSION.tar.xz" "$HERE/SHA256SUMS" | sha256sum -c -)
-	else
-		echo "warning: no pinned checksum for ffmpeg-$VERSION.tar.xz; got $(sha256sum "$tarball" | cut -d' ' -f1)" >&2
+	fetch() { curl -fL --retry 5 --retry-all-errors --connect-timeout 20 -o "$1" "$2"; }
+	if [ ! -f "$tarball" ] && ! fetch "$tarball" "https://ffmpeg.org/releases/ffmpeg-$VERSION.tar.xz"; then
+		rm -f "$tarball"
+		# ffmpeg.org is often slow or resets connections: the same release tag from GitHub's mirror.
+		gh=$WORK/ffmpeg-$VERSION-github.tar.gz
+		fetch "$gh" "https://github.com/FFmpeg/FFmpeg/archive/refs/tags/n$VERSION.tar.gz"
+		echo "ffmpeg source from the GitHub mirror: sha256 $(sha256sum "$gh" | cut -d' ' -f1)" >&2
+		tar -xzf "$gh" -C "$WORK"
+		mv "$WORK/FFmpeg-n$VERSION" "$SRC"
 	fi
-	tar -xJf "$tarball" -C "$WORK"
+	if [ ! -d "$SRC" ]; then
+		# Pinned in packaging/ffmpeg/SHA256SUMS once known; a mismatch stops the build.
+		if grep -q "ffmpeg-$VERSION.tar.xz" "$HERE/SHA256SUMS" 2>/dev/null; then
+			(cd "$WORK" && grep "ffmpeg-$VERSION.tar.xz" "$HERE/SHA256SUMS" | sha256sum -c -)
+		else
+			echo "warning: no pinned checksum for ffmpeg-$VERSION.tar.xz; got $(sha256sum "$tarball" | cut -d' ' -f1)" >&2
+		fi
+		tar -xJf "$tarball" -C "$WORK"
+	fi
 fi
 
 common=(

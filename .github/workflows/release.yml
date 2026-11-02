@@ -216,6 +216,11 @@ jobs:
       - name: Build
         run: |
           export NDK_HOME=$ANDROID_NDK_LATEST_HOME
+          # rquickjs generates its bindings for Android (it ships none): clang needs the sysroot.
+          sysroot=$NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/sysroot
+          export BINDGEN_EXTRA_CLANG_ARGS_aarch64_linux_android="--sysroot=$sysroot"
+          export BINDGEN_EXTRA_CLANG_ARGS_armv7_linux_androideabi="--sysroot=$sysroot"
+          export BINDGEN_EXTRA_CLANG_ARGS_x86_64_linux_android="--sysroot=$sysroot"
           pnpm tauri android build --apk --target aarch64 armv7 x86_64
           mkdir -p dist
           apk=$(find src-tauri/gen/android/app/build/outputs/apk -name '*.apk' | head -1)

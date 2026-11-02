@@ -37,7 +37,7 @@
 	}
 
 	const placeholder = $derived(info.title);
-	const canDownload = $derived(!!(app.video || app.audio) && !!app.folder);
+	const canDownload = $derived(!!(app.video || app.audio) && !!app.folder && !app.blocker);
 </script>
 
 <div class="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-1 duration-200">
@@ -178,7 +178,9 @@
 		Download
 		{#if app.estimate > 0}<span class="tabular font-normal opacity-80">· {app.clip ? '≈ ' : ''}{bytes(app.estimate)}</span>{/if}
 	</Button>
-	{#if app.video && !app.raw}
+	{#if app.blocker}
+		<p class="-mt-2 text-center text-xs text-destructive" role="status">{app.blocker}</p>
+	{:else if app.video && !app.raw}
 		<p class="-mt-2 text-center text-xs text-muted-foreground">
 			{`${app.video.height}p ${codecName(app.video.codec)}${app.audio ? ` + ${codecName(app.audio.codec)}` : ''} → .${app.ext}`}
 		</p>

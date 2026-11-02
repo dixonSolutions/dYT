@@ -126,6 +126,19 @@ pub fn default_clients() -> Vec<ClientProfile> {
     ]
 }
 
+/// A client list published as JSON (`clients.json` on the project site), checked before use:
+/// every profile needs a name, a version and a user agent, and at least one must not need JS.
+pub fn clients_from_json(json: &str) -> Result<Vec<ClientProfile>> {
+    let list: Vec<ClientProfile> = serde_json::from_str(json).map_err(|e| Error::Parse(format!("clients.json: {e}")))?;
+    let ok = !list.is_empty()
+        && list.iter().all(|c| !c.key.is_empty() && !c.name.is_empty() && !c.version.is_empty() && !c.user_agent.is_empty() && c.name_id > 0)
+        && list.iter().any(|c| !c.requires_js);
+    if !ok {
+        return Err(Error::Parse("clients.json: incomplete client list".into()));
+    }
+    Ok(list)
+}
+
 pub(crate) fn player_body(client: &ClientProfile, video_id: &str, visitor: Option<&str>, sts: Option<u32>) -> Value {
     let mut c = client.context.clone();
     c.insert("clientName".into(), json!(client.name));
@@ -438,6 +451,16 @@ pub fn parse_player(v: &Value, video_id: &str, client: &str) -> Result<VideoInfo
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn client_lists_round_trip_and_are_checked() {
+        let json = serde_json::to_string(&default_clients()).unwrap();
+        assert_eq!(clients_from_json(&json).unwrap(), default_clients());
+        assert!(clients_from_json("[]").is_err());
+        assert!(clients_from_json("not json").is_err());
+        let js_only: Vec<ClientProfile> = default_clients().into_iter().filter(|c| c.requires_js).collect();
+        assert!(clients_from_json(&serde_json::to_string(&js_only).unwrap()).is_err());
+    }
 
     #[test]
     fn embed_config() {

@@ -4,6 +4,7 @@
 	import { Toaster } from '#lib/components/ui/sonner/index.js';
 	import * as Tooltip from '#lib/components/ui/tooltip/index.js';
 	import { theme } from '#lib/theme.svelte.js';
+	import { app } from '#lib/state.svelte.js';
 
 	let { children } = $props();
 
@@ -13,4 +14,5 @@
 <Tooltip.Provider delayDuration={400}>
 	{@render children()}
 </Tooltip.Provider>
-<Toaster theme={theme.dark ? 'dark' : 'light'} position="bottom-center" offset={{ bottom: 'calc(env(safe-area-inset-bottom) + 16px)' }} />
+<!-- Phones: top, clear of the Download button under the thumb. Desktop: out of the way. -->
+<Toaster theme={theme.dark ? 'dark' : 'light'} position={app.mobile ? 'top-center' : 'bottom-right'} duration={3500} />

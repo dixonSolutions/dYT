@@ -22,3 +22,7 @@ webpki-root-certs = "1.0.11"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls-no-provider"] }
 rustls = { version = "0.23.46", default-features = false, features = ["ring"] }
 tokio = { version = "1.54.1", features = ["full"] }
+
+# rquickjs ships pre-generated bindings for desktop targets only; Android generates its own.
+[target.'cfg(target_os = "android")'.dependencies]
+rquickjs = { version = "0.14.0", features = ["bindgen"] }

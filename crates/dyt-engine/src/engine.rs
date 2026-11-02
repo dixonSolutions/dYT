@@ -157,6 +157,16 @@ impl Engine {
         }
     }
 
+    /// A small text resource over the engine's own TLS setup (used for the published client list).
+    pub async fn fetch_text(&self, url: &str) -> Result<String> {
+        let r = self.inner.api.get(url).timeout(Duration::from_secs(8)).send().await?;
+        let status = r.status().as_u16();
+        if status != 200 {
+            return Err(Error::Http { status, what: format!("fetching {url}") });
+        }
+        Ok(r.text().await?)
+    }
+
     pub fn clients(&self) -> Vec<ClientProfile> {
         self.inner.clients.read().unwrap().clone()
     }

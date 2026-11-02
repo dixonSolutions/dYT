@@ -79,7 +79,16 @@ class App {
 	}
 
 	get ext() {
-		return outputExt(this.video, this.audio, this.clip != null, this.raw);
+		// Without ffmpeg a single stream is saved as it comes (see the engine's download()).
+		return outputExt(this.video, this.audio, this.clip != null, this.raw || !this.platform.ffmpeg);
+	}
+
+	/** Why the current choice can't be downloaded, if it can't. */
+	get blocker(): string | null {
+		if (this.platform.ffmpeg) return null;
+		if (this.clip) return 'Clips need ffmpeg, which this install is missing.';
+		if (this.video && this.audio && !this.raw) return 'Merging video and audio needs ffmpeg, which this install is missing. Choose one, or raw streams.';
+		return null;
 	}
 
 	get estimate(): number {
