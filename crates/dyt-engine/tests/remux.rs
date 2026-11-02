@@ -120,6 +120,16 @@ async fn clip_and_merge(name: &str, video: &str, audio: &str, webm: bool) {
     let args = ffmpeg::args(&[Input { path: &vp, stream: 'v' }, Input { path: &ap, stream: 'a' }], Some(&Cut { start, end }), None, &out);
     ffmpeg::run(&ff, &args, &CancellationToken::new(), |_| {}).await.unwrap();
     let (d, kinds) = inspect(&ff, &out);
+    if (d - (end - start)).abs() >= 0.12 {
+        // Show what this ffmpeg made of it: the same command at info level, and the inputs.
+        let verbose: Vec<String> = args.iter().map(|a| if a == "error" { "info".to_string() } else { a.clone() }).collect();
+        let o = std::process::Command::new(&ff).args(&verbose).output().unwrap();
+        eprintln!("--- {}\n{}", verbose.join(" "), String::from_utf8_lossy(&o.stderr));
+        for f in [&vp, &ap] {
+            let o = std::process::Command::new(&ff).args(["-hide_banner", "-i"]).arg(f).output().unwrap();
+            eprintln!("--- {}\n{}", f.display(), String::from_utf8_lossy(&o.stderr));
+        }
+    }
     assert!((d - (end - start)).abs() < 0.12, "{name}: clip is {d}s, wanted {}", end - start);
     assert_eq!(kinds, ["video", "audio"], "{name}");
 

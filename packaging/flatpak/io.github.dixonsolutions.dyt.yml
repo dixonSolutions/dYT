@@ -36,7 +36,7 @@ modules:
   - name: dyt
     buildsystem: simple
     build-options:
-      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node22/bin
+      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node22/bin:/run/build/dyt/npm/bin
       env:
         CARGO_HOME: /run/build/dyt/cargo
         CARGO_TARGET_DIR: /run/build/dyt/target
@@ -60,8 +60,8 @@ modules:
           - src-tauri/gen/android
     build-commands:
       - npm install --global --prefix=/run/build/dyt/npm pnpm@12.16.1
-      - /run/build/dyt/npm/bin/pnpm install --frozen-lockfile
-      - /run/build/dyt/npm/bin/pnpm tauri build --no-bundle -- --locked
+      - pnpm install --frozen-lockfile
+      - pnpm tauri build --no-bundle -- --locked
       - install -Dm755 /run/build/dyt/target/release/dyt /app/bin/dyt
       - install -Dm644 packaging/flatpak/io.github.dixonsolutions.dyt.desktop /app/share/applications/io.github.dixonsolutions.dyt.desktop
       - install -Dm644 packaging/flatpak/io.github.dixonsolutions.dyt.metainfo.xml /app/share/metainfo/io.github.dixonsolutions.dyt.metainfo.xml
