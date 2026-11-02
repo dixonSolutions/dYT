@@ -35,18 +35,31 @@
 	let video: HTMLVideoElement | undefined = $state();
 	let audio: HTMLAudioElement | undefined = $state();
 
-	// Low-resolution streams for the preview: H.264 plays everywhere, VP9 is the fallback.
-	function previewVideo(formats: Format[]): Format | null {
-		const vids = formats.filter((f) => f.kind === 'video' && f.height && f.url);
-		const score = (f: Format) => (f.codec === 'avc1' ? 3 : f.codec === 'vp9' ? 2 : 1) * 10000 - Math.abs((f.height ?? 0) - 480);
-		return vids.filter((f) => (f.height ?? 0) <= 720).sort((a, b) => score(b) - score(a))[0] ?? null;
+	// Low-resolution streams for the preview, in the order worth trying: what this webview says
+	// it can decode first (WebKitGTK without an H.264 decoder can still play VP9 and AV1).
+	const probe = typeof document !== 'undefined' ? document.createElement('video') : null;
+	function canPlay(f: Format): number {
+		const answer = probe?.canPlayType(`${f.mime.split(';')[0]}; codecs="${f.codecs}"`) ?? '';
+		return answer === 'probably' ? 2 : answer === 'maybe' ? 1 : 0;
 	}
-	function previewAudio(formats: Format[]): Format | null {
-		const auds = formats.filter((f) => f.kind === 'audio' && f.url && !f.drc && (!f.audioTrack || f.audioTrack.isDefault));
-		return auds.find((f) => f.codec === 'mp4a' && f.bitrate > 100000) ?? auds.find((f) => f.codec === 'mp4a') ?? auds[0] ?? null;
+	function videoCandidates(formats: Format[]): Format[] {
+		const rank = (f: Format) => canPlay(f) * 100000 + ({ avc1: 3, vp9: 2, av1: 1 }[f.codec] ?? 0) * 10000 - Math.abs((f.height ?? 0) - 480);
+		return formats.filter((f) => f.kind === 'video' && f.height && f.url && (f.height ?? 0) <= 720 && canPlay(f) > 0).sort((a, b) => rank(b) - rank(a));
 	}
-	const vsrc = $derived(info ? previewVideo(info.formats)?.url : undefined);
-	const asrc = $derived(info ? previewAudio(info.formats)?.url : undefined);
+	function audioCandidates(formats: Format[]): Format[] {
+		const rank = (f: Format) => canPlay(f) * 100000 + (f.codec === 'mp4a' ? 2 : f.codec === 'opus' ? 1 : 0) * 10000 + Math.min(f.bitrate, 160000) / 100;
+		return formats.filter((f) => f.kind === 'audio' && f.url && !f.drc && (!f.audioTrack || f.audioTrack.isDefault) && canPlay(f) > 0).sort((a, b) => rank(b) - rank(a));
+	}
+	const videos = $derived(info ? videoCandidates(info.formats) : []);
+	const audios = $derived(info ? audioCandidates(info.formats) : []);
+	/** Which candidate is playing; an error moves on to the next one. */
+	let vIndex = $state(0);
+	let aIndex = $state(0);
+	const vsrc = $derived(videos[vIndex]?.url);
+	const asrc = $derived(audios[aIndex]?.url);
+	$effect(() => {
+		if (vIndex >= videos.length && videos.length) videoFailed = true;
+	});
 	const level = $derived<StoryboardLevel | null>(info ? pickLevel(info.storyboard, 320) : null);
 	const showStill = $derived(!vsrc || videoFailed);
 	/** The element whose clock drives everything: the video, or the audio without one. */
@@ -61,6 +74,8 @@
 				current = start;
 				videoFailed = false;
 				audioFailed = false;
+				vIndex = 0;
+				aIndex = 0;
 				previewing = false;
 			}
 			if (!isOpen) pause();
@@ -95,6 +110,8 @@
 		const m = master;
 		if (!m) return;
 		if (current >= duration - 0.05) seek(0);
+		// Start from where the playhead shows, even if an earlier seek didn't take.
+		if (Math.abs(m.currentTime - current) > 0.25) m.currentTime = current;
 		try {
 			if (m === video && audio && !audioFailed) {
 				audio.currentTime = video!.currentTime;
@@ -121,11 +138,8 @@
 		current = t;
 		const now = performance.now();
 		const apply = (to: number) => {
-			for (const el of [video, audio]) {
-				if (!el) continue;
-				if (!playing && 'fastSeek' in el && typeof el.fastSeek === 'function') el.fastSeek(to);
-				else el.currentTime = to;
-			}
+			// Exact seeks only: fastSeek lands on keyframes, and WebKitGTK sometimes drops it.
+			for (const el of [video, audio]) if (el) el.currentTime = to;
 			lastSeek = performance.now();
 		};
 		if (now - lastSeek > 70) apply(t);
@@ -148,7 +162,8 @@
 
 	/** While playing this is "stop here": pause and close the clip at this moment. */
 	function markEnd() {
-		const t = master?.currentTime ?? current;
+		// Playing: the media clock. Paused: the playhead as shown (a seek may still be settling).
+		const t = playing ? (master?.currentTime ?? current) : current;
 		if (playing) pause();
 		if (t <= start + MIN) {
 			// Marking an end before the start moves the start back instead of failing.
@@ -205,7 +220,12 @@
 		endText = clock(end);
 	}
 	function timeKeys(e: KeyboardEvent, which: 'start' | 'end') {
-		if (e.key === 'Enter') (e.currentTarget as HTMLInputElement).blur();
+		if (e.key === 'Enter') {
+			// Commit right away; blur alone isn't delivered while the window lacks focus.
+			if (which === 'start') commitStart();
+			else commitEnd();
+			(e.currentTarget as HTMLInputElement).blur();
+		}
 		if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
 			e.preventDefault();
 			const step = (e.shiftKey ? 1 : 0.1) * (e.key === 'ArrowUp' ? 1 : -1);
@@ -217,8 +237,9 @@
 
 	function onKey(e: KeyboardEvent) {
 		if (!open) return;
-		const t = e.target as HTMLElement;
-		if (t.tagName === 'INPUT' || t.getAttribute('role') === 'slider') return;
+		const t = e.target;
+		// Typing a time, or nudging a handle with the arrows, isn't a shortcut.
+		if (t instanceof HTMLElement && (t.tagName === 'INPUT' || t.getAttribute('role') === 'slider' || t.isContentEditable)) return;
 		const k = e.key;
 		if (k === ' ' || k === 'k') toggle();
 		else if (k === 'i' || k === '[') markStart();
@@ -266,7 +287,7 @@
 						onplaying={() => { buffering = false; if (playing && audio && !audioFailed && audio.paused) { audio.currentTime = video!.currentTime; audio.play().catch(() => {}); } }}
 						oncanplay={() => (buffering = false)}
 						onended={() => pause()}
-						onerror={() => (videoFailed = true)}
+						onerror={() => (vIndex + 1 < videos.length ? vIndex++ : (videoFailed = true))}
 						onclick={toggle}
 					></video>
 				{/if}
@@ -283,7 +304,7 @@
 					{/if}
 				{/if}
 				{#if open && asrc}
-					<audio bind:this={audio} src={asrc} preload="auto" onerror={() => (audioFailed = true)} onended={() => showStill && pause()}></audio>
+					<audio bind:this={audio} src={asrc} preload="auto" onerror={() => (aIndex + 1 < audios.length ? aIndex++ : (audioFailed = true))} onended={() => showStill && pause()}></audio>
 				{/if}
 				{#if buffering && playing}
 					<div class="absolute inset-0 grid place-items-center"><Spinner class="size-8 text-white" /></div>

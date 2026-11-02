@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.dixonsolutions.dyt</id>
+  <name>dYT</name>
+  <summary>Download YouTube videos, audio or exact clips</summary>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>MIT OR Apache-2.0</project_license>
+  <developer id="io.github.dixonsolutions">
+    <name>dixonSolutions</name>
+  </developer>
+  <description>
+    <p>dYT downloads from YouTube with a native engine: many connections at once for full
+    speed, automatic recovery from dropped connections and expired links, and clips that fetch
+    only the part you pick and cut it on the exact timestamp.</p>
+    <ul>
+      <li>Video and audio, video only, or audio only, at the quality you choose</li>
+      <li>Clips: mark a start, play, stop to mark the end, or drag both points</li>
+      <li>Raw streams, untouched, when you want YouTube's original files</li>
+      <li>History of everything you opened, one click to open it again</li>
+      <li>Follows the system's light or dark style as it changes</li>
+    </ul>
+  </description>
+  <launchable type="desktop-id">io.github.dixonsolutions.dyt.desktop</launchable>
+  <url type="homepage">https://github.com/dixonSolutions/dYT</url>
+  <url type="bugtracker">https://github.com/dixonSolutions/dYT/issues</url>
+  <url type="vcs-browser">https://github.com/dixonSolutions/dYT</url>
+  <content_rating type="oars-1.1"/>
+  <branding>
+    <color type="primary" scheme_preference="light">#f6b3b3</color>
+    <color type="primary" scheme_preference="dark">#7a1418</color>
+  </branding>
+  <requires>
+    <display_length compare="ge">360</display_length>
+  </requires>
+  <supports>
+    <control>pointing</control>
+    <control>keyboard</control>
+    <control>touch</control>
+  </supports>
+  <releases>
+    <release version="0.1.0" date="2026-11-02"/>
+  </releases>
+</component>

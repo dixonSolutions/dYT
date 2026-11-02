@@ -1,0 +1,279 @@
+# Every push to main is a release, v0.1.<commits> (scripts/version.sh): tests, the minimal
+# ffmpeg for each platform, the Flatpak (published as a signed OSTree repository on GitHub
+# Pages, so `flatpak update` picks up new versions), the Android APK, and a GitHub Release.
+# Commits whose message contains "[skip ci]" don't release.
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One publish at a time: the Flatpak repository on gh-pages is read, extended and written back.
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+env:
+  CARGO_TERM_COLOR: always
+  APP_ID: io.github.dixonsolutions.dyt
+
+jobs:
+  version:
+    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-24.04
+    outputs:
+      version: ${{ steps.v.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: v
+        run: |
+          eval "$(scripts/version.sh)"
+          echo "version=$DYT_VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing v$DYT_VERSION"
+
+  ffmpeg:
+    needs: version
+    strategy:
+      matrix:
+        target: [linux, android-arm64-v8a, android-armeabi-v7a, android-x86_64]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - id: cache
+        uses: actions/cache@v4
+        with:
+          path: target/ffmpeg-out/${{ matrix.target }}
+          key: ffmpeg-${{ matrix.target }}-${{ hashFiles('packaging/ffmpeg/*') }}
+      - if: steps.cache.outputs.cache-hit != 'true'
+        run: sudo apt-get install -y -q nasm
+      - if: steps.cache.outputs.cache-hit != 'true'
+        env:
+          ANDROID_NDK_HOME: ${{ env.ANDROID_NDK_LATEST_HOME }}
+        run: packaging/ffmpeg/build.sh ${{ matrix.target }} target/ffmpeg-out/${{ matrix.target }}
+      - if: matrix.target == 'linux'
+        run: target/ffmpeg-out/linux/ffmpeg -hide_banner -version | head -1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ffmpeg-${{ matrix.target }}
+          path: target/ffmpeg-out/${{ matrix.target }}
+
+  test:
+    needs: ffmpeg
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: test
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-linux
+          path: target/ffmpeg-out/linux
+      - name: System libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev librsvg2-dev
+          chmod +x target/ffmpeg-out/linux/ffmpeg
+      - run: pnpm install --frozen-lockfile
+      - name: Frontend checks
+        run: pnpm check && pnpm test
+      # The engine's merge and cut tests run against the minimal ffmpeg the apps ship.
+      - name: Rust tests
+        env:
+          DYT_FFMPEG: ${{ github.workspace }}/target/ffmpeg-out/linux/ffmpeg
+        run: cargo test --workspace --locked
+      - name: Live YouTube tests
+        continue-on-error: true
+        env:
+          DYT_LIVE: '1'
+          DYT_FFMPEG: ${{ github.workspace }}/target/ffmpeg-out/linux/ffmpeg
+        run: cargo test -p dyt-engine --test live --locked -- --test-threads 2
+
+  flatpak:
+    needs: [version, ffmpeg]
+    runs-on: ubuntu-24.04
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:gnome-49
+      options: --privileged
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: ffmpeg-linux
+          path: target/ffmpeg-out/linux
+      - name: Version
+        run: |
+          chmod +x target/ffmpeg-out/linux/ffmpeg
+          sed -i 's/"version": "[^"]*"/"version": "${{ needs.version.outputs.version }}"/' package.json
+      - name: Signing key
+        id: gpg
+        env:
+          DYT_GPG_PRIVATE_KEY: ${{ secrets.DYT_GPG_PRIVATE_KEY }}
+        run: |
+          export GNUPGHOME=$RUNNER_TEMP/gnupg
+          mkdir -m 700 -p "$GNUPGHOME"
+          if [ -z "$DYT_GPG_PRIVATE_KEY" ]; then
+            echo "::warning::DYT_GPG_PRIVATE_KEY is not set: the Flatpak repository is built unsigned and not published"
+            echo "sign=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$DYT_GPG_PRIVATE_KEY" | gpg --batch --import
+          key=$(gpg --list-secret-keys --with-colons | awk -F: '/^fpr/ { print $10; exit }')
+          echo "sign=--gpg-sign=$key --gpg-homedir=$GNUPGHOME" >> "$GITHUB_OUTPUT"
+      - name: Previous repository
+        run: |
+          git config --global --add safe.directory "$PWD"
+          mkdir -p pages
+          if git fetch --depth 1 origin gh-pages 2>/dev/null; then
+            git archive FETCH_HEAD | tar -x -C pages
+          fi
+      - name: Build
+        run: |
+          flatpak-builder --disable-rofiles-fuse --install-deps-from=flathub --force-clean \
+            --default-branch=stable --repo=pages/repo ${{ steps.gpg.outputs.sign }} \
+            --subject="dYT ${{ needs.version.outputs.version }}" \
+            build-dir packaging/flatpak/$APP_ID.yml
+      - name: Repository and bundle
+        run: |
+          flatpak build-update-repo --generate-static-deltas --prune --prune-depth=3 \
+            --title=dYT --default-branch=stable ${{ steps.gpg.outputs.sign }} pages/repo
+          mkdir -p dist
+          flatpak build-bundle --runtime-repo=https://dl.flathub.org/repo/flathub.flatpakrepo \
+            ${{ steps.gpg.outputs.sign }} pages/repo dist/dYT-${{ needs.version.outputs.version }}-x86_64.flatpak $APP_ID stable
+          packaging/flatpak/remote-files.sh pages "https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}"
+          touch pages/.nojekyll
+          tar -cf dist/pages.tar -C pages .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: flatpak
+          path: dist
+
+  android:
+    needs: [version, ffmpeg]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,x86_64-linux-android
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: android
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ffmpeg-android-*
+          path: ffmpeg
+      - name: Bundle ffmpeg
+        run: |
+          libs=src-tauri/gen/android/app/src/main/jniLibs
+          for abi in arm64-v8a armeabi-v7a x86_64; do
+            install -Dm755 ffmpeg/ffmpeg-android-$abi/libffmpeg.so $libs/$abi/libffmpeg.so
+          done
+          sed -i 's/"version": "[^"]*"/"version": "${{ needs.version.outputs.version }}"/' package.json
+      - name: Signing key
+        id: key
+        env:
+          KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          app=src-tauri/gen/android/app
+          if [ -z "$KEYSTORE" ]; then
+            echo "::warning::ANDROID_KEYSTORE_B64 is not set: the APK is built unsigned and not published"
+            echo "signed=" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "$KEYSTORE" | base64 -d > $app/release.keystore
+          printf 'storeFile=release.keystore\nstorePassword=%s\nkeyAlias=%s\nkeyPassword=%s\n' "$KEYSTORE_PASSWORD" "$KEY_ALIAS" "$KEY_PASSWORD" > $app/keystore.properties
+          echo "signed=yes" >> "$GITHUB_OUTPUT"
+      - run: pnpm install --frozen-lockfile
+      - name: Build
+        run: |
+          export NDK_HOME=$ANDROID_NDK_LATEST_HOME
+          pnpm tauri android build --apk --target aarch64 armv7 x86_64
+          mkdir -p dist
+          apk=$(find src-tauri/gen/android/app/build/outputs/apk -name '*.apk' | head -1)
+          cp "$apk" dist/dYT-${{ needs.version.outputs.version }}.apk
+          ls -la dist
+      - uses: actions/upload-artifact@v4
+        with:
+          name: android
+          path: dist
+
+  publish:
+    needs: [version, test, flatpak, android]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Check what can be published
+        id: ok
+        env:
+          HAVE_GPG: ${{ secrets.DYT_GPG_PRIVATE_KEY != '' && 'yes' || '' }}
+          HAVE_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_B64 != '' && 'yes' || '' }}
+        run: |
+          if [ -z "$HAVE_GPG" ] || [ -z "$HAVE_KEYSTORE" ]; then
+            echo "::warning::signing secrets missing (scripts/set-github-secrets.sh): built and tested, not published"
+            echo "publish=" >> "$GITHUB_OUTPUT"
+          else
+            echo "publish=yes" >> "$GITHUB_OUTPUT"
+          fi
+          mkdir -p pages
+          tar -xf artifacts/flatpak/pages.tar -C pages
+          scripts/site.sh pages "${{ needs.version.outputs.version }}" "$GITHUB_REPOSITORY"
+          scripts/release-notes.sh "${{ needs.version.outputs.version }}" > "$RUNNER_TEMP/notes.md"
+          (cd artifacts && sha256sum android/*.apk flatpak/*.flatpak | sed 's#[^ ]*/##') > artifacts/SHA256SUMS
+      - name: GitHub Release
+        if: steps.ok.outputs.publish == 'yes'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.version.outputs.version }}
+          name: dYT ${{ needs.version.outputs.version }}
+          target_commitish: ${{ github.sha }}
+          body_path: ${{ runner.temp }}/notes.md
+          make_latest: true
+          fail_on_unmatched_files: true
+          files: |
+            artifacts/android/*.apk
+            artifacts/flatpak/*.flatpak
+            artifacts/SHA256SUMS
+      - name: Publish the Flatpak repository and site
+        if: steps.ok.outputs.publish == 'yes'
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_branch: gh-pages
+          publish_dir: pages
+          force_orphan: true
+          enable_jekyll: false
+          user_name: github-actions[bot]
+          user_email: 41898282+github-actions[bot]@users.noreply.github.com
+          full_commit_message: "Publish dYT ${{ needs.version.outputs.version }} [skip ci]"

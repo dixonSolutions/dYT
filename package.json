@@ -46,5 +46,8 @@
 	"imports": {
 		"#lib": "./src/lib/index.js",
 		"#lib/*": "./src/lib/*"
-	}
+	},
+	"packageManager": "pnpm@12.16.1",
+	"description": "Fast, reliable YouTube downloads",
+	"license": "MIT OR Apache-2.0"
 }

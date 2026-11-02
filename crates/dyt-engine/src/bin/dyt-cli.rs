@@ -1,7 +1,7 @@
-//! `dyt`: the engine from a terminal. Handy on its own and for testing the engine for real.
+//! `dyt-cli`: the engine from a terminal. Handy on its own and for testing the engine for real.
 //!
-//!   dyt info <link>
-//!   dyt get <link> [-o DIR] [-q HEIGHT] [--compat] [-x | --video-only] [--clip START-END]
+//!   dyt-cli info <link>
+//!   dyt-cli get <link> [-o DIR] [-q HEIGHT] [--compat] [-x | --video-only] [--clip START-END]
 //!                  [--raw] [-n NAME] [-j CONNECTIONS] [--video ITAG] [--audio ITAG]
 
 use std::io::Write;
@@ -26,7 +26,7 @@ fn mb(b: u64) -> String {
 }
 
 fn usage() -> ExitCode {
-    eprintln!("usage: dyt info <link>\n       dyt get <link> [-o DIR] [-q HEIGHT] [--compat] [-x|--video-only] [--clip START-END] [--raw] [-n NAME] [-j N] [--video ITAG] [--audio ITAG]");
+    eprintln!("usage: dyt-cli info <link>\n       dyt-cli get <link> [-o DIR] [-q HEIGHT] [--compat] [-x|--video-only] [--clip START-END] [--raw] [-n NAME] [-j N] [--video ITAG] [--audio ITAG]");
     ExitCode::from(2)
 }
 

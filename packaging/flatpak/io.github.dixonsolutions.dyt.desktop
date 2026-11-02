@@ -1,0 +1,13 @@
+[Desktop Entry]
+Type=Application
+Name=dYT
+GenericName=YouTube Downloader
+Comment=Download YouTube videos, audio or exact clips
+Icon=io.github.dixonsolutions.dyt
+Exec=dyt %u
+Terminal=false
+Categories=AudioVideo;Video;Network;
+Keywords=youtube;download;video;audio;clip;music;
+StartupNotify=true
+StartupWMClass=dyt
+MimeType=x-scheme-handler/dyt;

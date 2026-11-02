@@ -9,6 +9,7 @@
 	import AlertIcon from '@lucide/svelte/icons/circle-alert';
 	import { openPath, revealItemInDir } from '@tauri-apps/plugin-opener';
 	import { inTauri } from '#lib/api.js';
+	import { android } from '#lib/android.js';
 	import { app, type Job } from '#lib/state.svelte.js';
 	import { basename, bytes, eta, speed } from '#lib/format.js';
 
@@ -27,7 +28,7 @@
 		return [`${bytes(p.done)} of ${bytes(p.total)}`, speed(p.speed), eta(p.eta)].filter(Boolean).join(' · ');
 	}
 
-	const open = (f: string) => inTauri && openPath(f).catch(() => {});
+	const open = (f: string) => (android ? android.openFile(f) : inTauri && openPath(f).catch(() => {}));
 	const reveal = (f: string) => inTauri && revealItemInDir(f).catch(() => {});
 </script>
 

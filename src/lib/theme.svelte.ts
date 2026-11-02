@@ -5,6 +5,7 @@
 
 import { listen } from '@tauri-apps/api/event';
 import { api, inTauri } from './api';
+import { android, onAndroid } from './android';
 
 class Theme {
 	dark = $state(false);
@@ -12,6 +13,12 @@ class Theme {
 	#fromPortal = false;
 
 	start() {
+		if (android) {
+			// The activity handles theme changes without restarting, and says so itself.
+			this.#apply(android.isDark(), false);
+			onAndroid((e) => e.type === 'theme' && this.#apply(e.dark, true));
+			return;
+		}
 		const mq = matchMedia('(prefers-color-scheme: dark)');
 		this.#apply(mq.matches, false);
 		mq.addEventListener('change', (e) => {

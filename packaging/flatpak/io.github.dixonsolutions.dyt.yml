@@ -1,0 +1,68 @@
+# dYT as a Flatpak, built from this repository. Published by .github/workflows/release.yml to
+# the OSTree repository on GitHub Pages; build it locally with packaging/flatpak/build.sh.
+id: io.github.dixonsolutions.dyt
+runtime: org.gnome.Platform
+runtime-version: '49'
+sdk: org.gnome.Sdk
+sdk-extensions:
+  - org.freedesktop.Sdk.Extension.rust-stable
+  - org.freedesktop.Sdk.Extension.node22
+command: dyt
+finish-args:
+  - --share=ipc
+  - --share=network
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=dri
+  # The usual places downloads go; any other folder is granted through the file chooser portal.
+  - --filesystem=xdg-download
+  - --filesystem=xdg-videos
+  - --filesystem=xdg-music
+
+modules:
+  # Remux-only, LGPL, no codecs. Built by packaging/ffmpeg/build.sh (the release workflow's
+  # ffmpeg job) before this manifest: packaging/ffmpeg/build.sh linux target/ffmpeg-out/linux
+  - name: ffmpeg
+    buildsystem: simple
+    sources:
+      - type: file
+        path: ../../target/ffmpeg-out/linux/ffmpeg
+    build-commands:
+      - install -Dm755 ffmpeg /app/bin/ffmpeg
+
+  - name: dyt
+    buildsystem: simple
+    build-options:
+      append-path: /usr/lib/sdk/rust-stable/bin:/usr/lib/sdk/node22/bin
+      env:
+        CARGO_HOME: /run/build/dyt/cargo
+        CARGO_TARGET_DIR: /run/build/dyt/target
+        npm_config_store_dir: /run/build/dyt/pnpm-store
+        CI: 'true'
+      # Our own remote, not Flathub: the build may fetch crates and npm packages.
+      build-args:
+        - --share=network
+    sources:
+      - type: dir
+        path: ../..
+        skip:
+          - target
+          - node_modules
+          - build
+          - .svelte-kit
+          - .scratch
+          - .flatpak-builder
+          - build-flatpak
+          - repo
+          - src-tauri/gen/android
+    build-commands:
+      - npm install --global --prefix=/run/build/dyt/npm pnpm@12.16.1
+      - /run/build/dyt/npm/bin/pnpm install --frozen-lockfile
+      - /run/build/dyt/npm/bin/pnpm tauri build --no-bundle -- --locked
+      - install -Dm755 /run/build/dyt/target/release/dyt /app/bin/dyt
+      - install -Dm644 packaging/flatpak/io.github.dixonsolutions.dyt.desktop /app/share/applications/io.github.dixonsolutions.dyt.desktop
+      - install -Dm644 packaging/flatpak/io.github.dixonsolutions.dyt.metainfo.xml /app/share/metainfo/io.github.dixonsolutions.dyt.metainfo.xml
+      - install -Dm644 assets/icon.svg /app/share/icons/hicolor/scalable/apps/io.github.dixonsolutions.dyt.svg
+      - for s in 32 64 128; do install -Dm644 src-tauri/icons/${s}x${s}.png /app/share/icons/hicolor/${s}x${s}/apps/io.github.dixonsolutions.dyt.png; done
+      - install -Dm644 src-tauri/icons/128x128@2x.png /app/share/icons/hicolor/256x256/apps/io.github.dixonsolutions.dyt.png

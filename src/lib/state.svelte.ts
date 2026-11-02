@@ -4,6 +4,7 @@ import { toast } from 'svelte-sonner';
 import { api, asEngineError, type EngineError, type Folder, type HistoryEntry, type JobEvent, type Platform, type Progress, type Settings, type VideoInfo } from './api';
 import { audioOptions, outputExt, pickAudio, pickVideo, qualityOptions, sizeOf } from './select';
 import { basename } from './format';
+import { android, onAndroid } from './android';
 
 export type Status = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -96,8 +97,10 @@ class App {
 		this.platform = platform;
 		this.history = history;
 		this.quality = settings.quality || 'best';
-		const pending = await api.takePendingLink();
+		const pending = android?.takeLink() ?? (await api.takePendingLink());
 		if (pending) this.open(pending);
+		// Shared to dYT while it was already open.
+		onAndroid((e) => e.type === 'link' && this.open(e.link));
 	}
 
 	/** Load a link, exactly as if it had been typed and submitted. */
@@ -196,6 +199,7 @@ class App {
 				case 'done':
 					update((j) => ({ state: 'done', files: e.files, seconds: e.seconds, bytes: e.bytes, progress: { ...j.progress, stage: 'done', fraction: 1 } }));
 					toast.success('Download finished', { description: e.files.map(basename).join(', ') });
+					android?.scanFiles(JSON.stringify(e.files));
 					api.history().then((h) => (this.history = h));
 					break;
 				case 'failed':

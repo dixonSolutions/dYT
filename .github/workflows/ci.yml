@@ -1,0 +1,42 @@
+# Pull requests: everything release.yml tests, without publishing anything.
+name: ci
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: System libraries
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y -q libwebkit2gtk-4.1-dev libsoup-3.0-dev libjavascriptcoregtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev ffmpeg
+      - run: pnpm install --frozen-lockfile
+      - name: Frontend checks
+        run: pnpm check && pnpm test
+      - name: Rust tests
+        run: cargo test --workspace --locked
+      # YouTube treats datacenter addresses with suspicion; a bot check here isn't a regression.
+      - name: Live YouTube tests
+        continue-on-error: true
+        env:
+          DYT_LIVE: '1'
+        run: cargo test -p dyt-engine --test live --locked -- --test-threads 2
