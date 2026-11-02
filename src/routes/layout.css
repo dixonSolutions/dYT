@@ -1,81 +1,85 @@
 @import 'tailwindcss';
-@import "tw-animate-css";
-@import "shadcn-svelte/tailwind.css";
-@import "@fontsource-variable/inter";
+@import 'tw-animate-css';
+@import 'shadcn-svelte/tailwind.css';
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ * One red, tuned per scheme. Surfaces are neutral with a faint warm cast so the red sits
+ * naturally on them; everything else (font, scheme, motion) comes from the system.
+ */
 :root {
-	--background: oklch(1 0 0);
-	--foreground: oklch(0.145 0 0);
+	color-scheme: light;
+	--background: oklch(0.992 0.002 17);
+	--foreground: oklch(0.2 0.012 17);
 	--card: oklch(1 0 0);
-	--card-foreground: oklch(0.145 0 0);
+	--card-foreground: oklch(0.2 0.012 17);
 	--popover: oklch(1 0 0);
-	--popover-foreground: oklch(0.145 0 0);
-	--primary: oklch(0.205 0 0);
-	--primary-foreground: oklch(0.985 0 0);
-	--secondary: oklch(0.97 0 0);
-	--secondary-foreground: oklch(0.205 0 0);
-	--muted: oklch(0.97 0 0);
-	--muted-foreground: oklch(0.556 0 0);
-	--accent: oklch(0.97 0 0);
-	--accent-foreground: oklch(0.205 0 0);
+	--popover-foreground: oklch(0.2 0.012 17);
+	--primary: oklch(0.575 0.215 26);
+	--primary-foreground: oklch(0.99 0.005 17);
+	--secondary: oklch(0.962 0.006 17);
+	--secondary-foreground: oklch(0.26 0.015 17);
+	--muted: oklch(0.962 0.006 17);
+	--muted-foreground: oklch(0.52 0.014 17);
+	--accent: oklch(0.955 0.02 20);
+	--accent-foreground: oklch(0.42 0.16 26);
 	--destructive: oklch(0.577 0.245 27.325);
-	--border: oklch(0.922 0 0);
-	--input: oklch(0.922 0 0);
-	--ring: oklch(0.708 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--radius: 0.625rem;
-	--sidebar: oklch(0.985 0 0);
-	--sidebar-foreground: oklch(0.145 0 0);
-	--sidebar-primary: oklch(0.205 0 0);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.97 0 0);
-	--sidebar-accent-foreground: oklch(0.205 0 0);
-	--sidebar-border: oklch(0.922 0 0);
-	--sidebar-ring: oklch(0.708 0 0);
+	--border: oklch(0.915 0.008 17);
+	--input: oklch(0.9 0.008 17);
+	--ring: oklch(0.575 0.215 26);
+	--radius: 0.75rem;
+	--chart-1: oklch(0.575 0.215 26);
+	--chart-2: oklch(0.7 0.15 30);
+	--chart-3: oklch(0.45 0.15 25);
+	--chart-4: oklch(0.8 0.1 30);
+	--chart-5: oklch(0.35 0.1 25);
+	--sidebar: oklch(0.985 0.003 17);
+	--sidebar-foreground: oklch(0.2 0.012 17);
+	--sidebar-primary: oklch(0.575 0.215 26);
+	--sidebar-primary-foreground: oklch(0.99 0.005 17);
+	--sidebar-accent: oklch(0.955 0.02 20);
+	--sidebar-accent-foreground: oklch(0.42 0.16 26);
+	--sidebar-border: oklch(0.915 0.008 17);
+	--sidebar-ring: oklch(0.575 0.215 26);
+	--selection: oklch(0.575 0.215 26 / 0.16);
 }
 
 .dark {
-	--background: oklch(0.145 0 0);
-	--foreground: oklch(0.985 0 0);
-	--card: oklch(0.205 0 0);
-	--card-foreground: oklch(0.985 0 0);
-	--popover: oklch(0.205 0 0);
-	--popover-foreground: oklch(0.985 0 0);
-	--primary: oklch(0.922 0 0);
-	--primary-foreground: oklch(0.205 0 0);
-	--secondary: oklch(0.269 0 0);
-	--secondary-foreground: oklch(0.985 0 0);
-	--muted: oklch(0.269 0 0);
-	--muted-foreground: oklch(0.708 0 0);
-	--accent: oklch(0.269 0 0);
-	--accent-foreground: oklch(0.985 0 0);
+	color-scheme: dark;
+	--background: oklch(0.165 0.006 17);
+	--foreground: oklch(0.955 0.005 17);
+	--card: oklch(0.205 0.008 17);
+	--card-foreground: oklch(0.955 0.005 17);
+	--popover: oklch(0.215 0.008 17);
+	--popover-foreground: oklch(0.955 0.005 17);
+	--primary: oklch(0.645 0.2 25);
+	--primary-foreground: oklch(0.99 0.005 17);
+	--secondary: oklch(0.255 0.01 17);
+	--secondary-foreground: oklch(0.955 0.005 17);
+	--muted: oklch(0.245 0.009 17);
+	--muted-foreground: oklch(0.7 0.012 17);
+	--accent: oklch(0.29 0.05 22);
+	--accent-foreground: oklch(0.85 0.09 22);
 	--destructive: oklch(0.704 0.191 22.216);
-	--border: oklch(1 0 0 / 10%);
-	--input: oklch(1 0 0 / 15%);
-	--ring: oklch(0.556 0 0);
-	--chart-1: oklch(0.87 0 0);
-	--chart-2: oklch(0.556 0 0);
-	--chart-3: oklch(0.439 0 0);
-	--chart-4: oklch(0.371 0 0);
-	--chart-5: oklch(0.269 0 0);
-	--sidebar: oklch(0.205 0 0);
-	--sidebar-foreground: oklch(0.985 0 0);
-	--sidebar-primary: oklch(0.488 0.243 264.376);
-	--sidebar-primary-foreground: oklch(0.985 0 0);
-	--sidebar-accent: oklch(0.269 0 0);
-	--sidebar-accent-foreground: oklch(0.985 0 0);
-	--sidebar-border: oklch(1 0 0 / 10%);
-	--sidebar-ring: oklch(0.556 0 0);
+	--border: oklch(1 0 0 / 9%);
+	--input: oklch(1 0 0 / 13%);
+	--ring: oklch(0.645 0.2 25);
+	--sidebar: oklch(0.19 0.008 17);
+	--sidebar-foreground: oklch(0.955 0.005 17);
+	--sidebar-primary: oklch(0.645 0.2 25);
+	--sidebar-primary-foreground: oklch(0.99 0.005 17);
+	--sidebar-accent: oklch(0.29 0.05 22);
+	--sidebar-accent-foreground: oklch(0.85 0.09 22);
+	--sidebar-border: oklch(1 0 0 / 9%);
+	--sidebar-ring: oklch(0.645 0.2 25);
+	--selection: oklch(0.645 0.2 25 / 0.28);
 }
 
 @theme inline {
-	--font-sans: 'Inter Variable', sans-serif;
+	/* The system's own UI font: Adwaita Sans/Cantarell on GNOME, Roboto on Android. */
+	--font-sans: system-ui, -apple-system, 'Adwaita Sans', Cantarell, 'Segoe UI', Roboto, 'Noto Sans', sans-serif;
+	--font-mono: ui-monospace, 'Adwaita Mono', 'Source Code Pro', 'Roboto Mono', monospace;
 	--color-sidebar-ring: var(--sidebar-ring);
 	--color-sidebar-border: var(--sidebar-border);
 	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -120,10 +124,53 @@
 	* {
 		@apply border-border outline-ring/50;
 	}
+	html {
+		@apply font-sans antialiased;
+		-webkit-tap-highlight-color: transparent;
+		text-size-adjust: 100%;
+	}
 	body {
 		@apply bg-background text-foreground;
+		/* App feel: no rubber-banding, no accidental selection of the chrome. */
+		overscroll-behavior: none;
+		-webkit-user-select: none;
+		user-select: none;
 	}
-	html {
-		@apply font-sans;
+	input,
+	textarea,
+	.selectable {
+		-webkit-user-select: text;
+		user-select: text;
 	}
+	::selection {
+		background: var(--selection);
+	}
+	/* A scheme switch cross-fades instead of snapping. */
+	html.theme-fade,
+	html.theme-fade * {
+		transition:
+			background-color 220ms ease,
+			border-color 220ms ease,
+			color 220ms ease,
+			fill 220ms ease !important;
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 1ms !important;
+			transition-duration: 1ms !important;
+		}
+	}
+}
+
+/* Safe areas: notches, gesture bars and rounded corners on phones. */
+.safe-top {
+	padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+	padding-bottom: env(safe-area-inset-bottom);
+}
+.tabular {
+	font-variant-numeric: tabular-nums;
 }

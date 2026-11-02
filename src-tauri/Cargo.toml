@@ -1,0 +1,36 @@
+[package]
+name = "dyt"
+version = "0.1.0"
+description = "Fast, reliable YouTube downloads"
+authors = ["dixonSolutions"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/dixonSolutions/dYT"
+edition = "2024"
+rust-version = "1.90"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+name = "dyt_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2.7.4" }
+
+[dependencies]
+serde_json = "1.0"
+serde = { version = "1.0", features = ["derive"] }
+log = "0.4"
+tauri = { version = "2.12.5" }
+dyt-engine = { version = "0.1.0", path = "../crates/dyt-engine" }
+tauri-plugin-dialog = "2.8.4"
+tauri-plugin-opener = "2.7.2"
+tauri-plugin-clipboard-manager = "2.5.0"
+tokio = { version = "1.54.1", features = ["rt-multi-thread", "macros", "sync", "time", "fs"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "windows", target_os = "macos"))'.dependencies]
+tauri-plugin-single-instance = "2.5.5"
+
+[target.'cfg(target_os = "linux")'.dependencies]
+ashpd = { version = "0.13.13", default-features = false, features = ["tokio", "settings"] }
+futures-util = "0.3.34"
