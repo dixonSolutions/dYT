@@ -63,7 +63,9 @@ android {
             }
         }
         getByName("release") {
-            signingConfigs.findByName("release")?.let { signingConfig = it }
+            // The release key when CI has it; otherwise the debug key, so the APK still installs
+            // for testing (the release workflow never publishes one of those).
+            signingConfig = signingConfigs.findByName("release") ?: signingConfigs.getByName("debug")
             optimization {
                enable = true
             }
