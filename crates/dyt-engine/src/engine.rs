@@ -632,6 +632,25 @@ impl Engine {
     }
 }
 
+/// Remove work directories (`.dyt-<id>-<pid>-<n>`) that a process which is no longer running
+/// left behind in `dir` (a crash, a forced quit, a power cut).
+pub fn clean_stale_work(dir: &Path) {
+    let Ok(entries) = std::fs::read_dir(dir) else { return };
+    let me = std::process::id();
+    for e in entries.flatten() {
+        let name = e.file_name().to_string_lossy().into_owned();
+        let Some(rest) = name.strip_prefix(".dyt-") else { continue };
+        // <11-char id>-<pid>-<hex>; ids may contain '-', so read from the right.
+        let mut parts = rest.rsplitn(3, '-');
+        let (Some(_), Some(pid)) = (parts.next(), parts.next()) else { continue };
+        let Ok(pid) = pid.parse::<u32>() else { continue };
+        let alive = pid == me || (cfg!(unix) && Path::new(&format!("/proc/{pid}")).exists());
+        if !alive && e.path().is_dir() {
+            std::fs::remove_dir_all(e.path()).ok();
+        }
+    }
+}
+
 /// Move a finished file into place under a free name.
 fn place(from: &Path, dir: &Path, stem: &str, ext: &str) -> Result<PathBuf> {
     let to = names::unique(dir, stem, ext);
@@ -654,6 +673,26 @@ impl TempDir {
         let path = dir.join(format!(".dyt-{id}-{}-{nanos:x}", std::process::id()));
         std::fs::create_dir_all(&path)?;
         Ok(TempDir { path })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn stale_work_dirs_are_removed_live_ones_kept() {
+        let dir = std::env::temp_dir().join(format!("dyt-stale-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let dead = dir.join(".dyt-ab-cdefghij-999999999-1f");
+        let mine = dir.join(format!(".dyt-abcdefghijk-{}-2e", std::process::id()));
+        let other = dir.join("keep-me");
+        for d in [&dead, &mine, &other] {
+            std::fs::create_dir_all(d).unwrap();
+        }
+        clean_stale_work(&dir);
+        assert!(!dead.exists() && mine.exists() && other.exists());
+        std::fs::remove_dir_all(dir).ok();
     }
 }
 

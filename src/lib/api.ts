@@ -145,5 +145,6 @@ export const api = {
 	folders: () => invoke<Folder[]>('folders'),
 	platform: () => invoke<Platform>('platform'),
 	takePendingLink: () => invoke<string | null>('take_pending_link'),
+	quit: () => invoke<void>('quit'),
 	systemTheme: () => invoke<'dark' | 'light' | null>('system_theme')
 };

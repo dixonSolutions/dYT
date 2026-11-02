@@ -23,6 +23,8 @@ struct AppState {
     store: Store,
     /// A link passed on the command line (or shared to the app) before the UI was ready.
     pending_link: Mutex<Option<String>>,
+    /// Set once the user has agreed to quit with downloads still running.
+    quitting: std::sync::atomic::AtomicBool,
 }
 
 type CmdResult<T> = Result<T, dyt_engine::Error>;
@@ -217,6 +219,20 @@ fn update_clients(app: AppHandle) {
     });
 }
 
+/// Quit even though downloads are running (the user confirmed).
+#[tauri::command]
+fn quit(app: AppHandle, state: State<'_, AppState>) {
+    state.quitting.store(true, Ordering::SeqCst);
+    for c in state.jobs.lock().unwrap().values() {
+        c.cancel();
+    }
+    // Give the cancelled jobs a moment to remove their work directories.
+    tauri::async_runtime::spawn(async move {
+        tokio::time::sleep(std::time::Duration::from_millis(400)).await;
+        app.exit(0);
+    });
+}
+
 /// The link the app was opened with, once.
 #[tauri::command]
 fn take_pending_link(state: State<'_, AppState>) -> Option<String> {
@@ -261,10 +277,26 @@ pub fn run() {
                 next_job: AtomicU64::new(0),
                 store,
                 pending_link: Mutex::new(link_from_args(&args)),
+                quitting: std::sync::atomic::AtomicBool::new(false),
             });
             theme::watch(app.handle().clone());
             update_clients(app.handle().clone());
+            // Work left behind by a crash or a forced quit, in every folder downloads go to.
+            let mut dirs: Vec<PathBuf> = folders(app.handle().clone()).into_iter().map(|f| PathBuf::from(f.path)).collect();
+            dirs.extend(app.state::<AppState>().store.settings().folder.map(PathBuf::from));
+            std::thread::spawn(move || dirs.iter().for_each(|d| dyt_engine::clean_stale_work(d)));
             Ok(())
+        })
+        // Closing the window mid-download asks first instead of silently dropping the work.
+        .on_window_event(|window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                let state = window.state::<AppState>();
+                let running = state.jobs.lock().unwrap().len();
+                if running > 0 && !state.quitting.load(Ordering::SeqCst) {
+                    api.prevent_close();
+                    window.emit("close-requested", running).ok();
+                }
+            }
         })
         .invoke_handler(tauri::generate_handler![
             resolve,
@@ -279,6 +311,7 @@ pub fn run() {
             folders,
             platform,
             take_pending_link,
+            quit,
             theme::system_theme,
         ])
         .run(tauri::generate_context!())

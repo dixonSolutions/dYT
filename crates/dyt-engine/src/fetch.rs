@@ -62,7 +62,9 @@ impl Default for FetchOptions {
             connections: 8,
             min_chunk: 512 * 1024,
             max_chunk: 8 * 1024 * 1024,
-            max_attempts: 10,
+            // With the 8 s backoff cap this rides out ~2.5 minutes of a dead connection
+            // (a Wi-Fi switch, a tunnel) before giving up on the job.
+            max_attempts: 22,
             stall: Duration::from_secs(15),
             user_agent: crate::innertube::WEB_UA.into(),
         }

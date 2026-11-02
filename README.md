@@ -74,4 +74,6 @@ pnpm tauri build --debug --no-bundle && tests/e2e/run.sh         # the real app,
 MIT or Apache-2.0, at your option. Bundled third-party parts are listed in
 [THIRD_PARTY.md](THIRD_PARTY.md).
 
+Known gaps and ideas: [docs/ROADMAP.md](docs/ROADMAP.md).
+
 Download only what you have the right to download.

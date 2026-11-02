@@ -8,6 +8,7 @@
 	import ErrorPanel from '#lib/components/app/ErrorPanel.svelte';
 	import Welcome from '#lib/components/app/Welcome.svelte';
 	import DownloadList from '#lib/components/app/DownloadList.svelte';
+	import QuitDialog from '#lib/components/app/QuitDialog.svelte';
 	import { inTauri } from '#lib/api.js';
 	import { app } from '#lib/state.svelte.js';
 
@@ -85,3 +86,5 @@
 		{/if}
 	</main>
 </div>
+
+<QuitDialog />

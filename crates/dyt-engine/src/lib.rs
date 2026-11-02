@@ -13,7 +13,7 @@ pub mod model;
 pub mod names;
 pub mod select;
 
-pub use engine::{DownloadRequest, DownloadResult, Engine, EngineConfig, Progress, Stage};
+pub use engine::{clean_stale_work, DownloadRequest, DownloadResult, Engine, EngineConfig, Progress, Stage};
 pub use error::{Error, Result};
 pub use model::{Container, Format, StreamKind, VideoInfo};
 pub use select::Preference;
