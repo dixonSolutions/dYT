@@ -141,6 +141,10 @@ jobs:
           mkdir -p pages
           if git fetch --depth 1 origin gh-pages 2>/dev/null; then
             git archive FETCH_HEAD | tar -x -C pages
+            # Git keeps no empty directories, but OSTree expects its standard ones.
+            if [ -d pages/repo ]; then
+              mkdir -p pages/repo/refs/heads pages/repo/refs/remotes pages/repo/refs/mirrors pages/repo/objects pages/repo/tmp pages/repo/state pages/repo/extensions
+            fi
           fi
       - name: Build
         run: |
