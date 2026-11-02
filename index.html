@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>dYT: fast, reliable YouTube downloads</title>
+<link rel="icon" href="icon.svg">
+<style>
+	:root { --bg: #fcfbfb; --fg: #2a2223; --muted: #6f6566; --line: #ece6e6; --red: #d9262b; --code: #f4efef; }
+	@media (prefers-color-scheme: dark) { :root { --bg: #141112; --fg: #f3eeee; --muted: #b3a9aa; --line: #2b2526; --red: #f0504f; --code: #1f1a1b; } }
+	* { box-sizing: border-box; }
+	body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.55 system-ui, -apple-system, "Adwaita Sans", Cantarell, Roboto, sans-serif; }
+	main { max-width: 44rem; margin: 0 auto; padding: 4rem 1.25rem 5rem; }
+	header { display: flex; align-items: center; gap: 1rem; }
+	header img { width: 64px; height: 64px; }
+	h1 { margin: 0; font-size: 2rem; letter-spacing: -0.02em; }
+	.lead { color: var(--muted); margin: .25rem 0 0; }
+	h2 { font-size: 1.05rem; margin: 2.5rem 0 .75rem; }
+	pre { background: var(--code); border: 1px solid var(--line); border-radius: 12px; padding: .9rem 1rem; overflow-x: auto; font-size: .9rem; user-select: all; }
+	a { color: var(--red); }
+	.buttons { display: flex; flex-wrap: wrap; gap: .6rem; margin-top: 2rem; }
+	.btn { display: inline-flex; align-items: center; padding: .65rem 1.1rem; border-radius: 12px; background: var(--red); color: #fff; text-decoration: none; font-weight: 600; }
+	.btn.alt { background: transparent; color: var(--fg); border: 1px solid var(--line); }
+	ul { padding-left: 1.2rem; color: var(--muted); }
+	footer { margin-top: 3rem; color: var(--muted); font-size: .85rem; }
+</style>
+</head>
+<body>
+<main>
+	<header>
+		<img src="icon.svg" alt="">
+		<div>
+			<h1>dYT</h1>
+			<p class="lead">Fast, reliable YouTube downloads. Version 0.1.11.</p>
+		</div>
+	</header>
+	<div class="buttons">
+		<a class="btn" href="dyt.flatpakref">Install on Linux</a>
+		<a class="btn alt" href="https://github.com/dixonSolutions/dYT/releases/latest">Android APK</a>
+		<a class="btn alt" href="https://github.com/dixonSolutions/dYT">Source</a>
+	</div>
+	<ul>
+		<li>Many connections at once, so downloads run as fast as your line allows</li>
+		<li>Clips fetch only the part you pick and cut on the exact timestamp</li>
+		<li>Video, audio or both, at the quality you choose, or the raw streams</li>
+		<li>Recovers from dropped connections and expired links on its own</li>
+	</ul>
+	<h2>Linux (Flatpak)</h2>
+	<pre>flatpak install --user https://dixonsolutions.github.io/dYT/dyt.flatpakref</pre>
+	<p>Or add the repository once and install from it; <code>flatpak update</code> keeps dYT current:</p>
+	<pre>flatpak remote-add --user --if-not-exists dyt https://dixonsolutions.github.io/dYT/dyt.flatpakrepo
+flatpak install --user dyt io.github.dixonsolutions.dyt</pre>
+	<h2>Android</h2>
+	<p>Download the APK from the <a href="https://github.com/dixonSolutions/dYT/releases/latest">latest release</a> and open it. Then share any YouTube link to dYT, or open it with dYT.</p>
+	<footer>Built from <a href="https://github.com/dixonSolutions/dYT">github.com/dixonSolutions/dYT</a> on every change to main.</footer>
+</main>
+</body>
+</html>

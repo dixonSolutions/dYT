@@ -1,0 +1,70 @@
+[
+  {
+    "key": "visionos",
+    "name": "VISIONOS",
+    "nameId": 101,
+    "version": "1.02",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15",
+    "context": {
+      "deviceMake": "Apple",
+      "deviceModel": "RealityDevice17,1",
+      "osName": "visionOS",
+      "osVersion": "26.5.23O471"
+    },
+    "host": "www.youtube.com",
+    "rootContext": {},
+    "embed": false,
+    "requiresJs": false
+  },
+  {
+    "key": "tv_samsung",
+    "name": "TVHTML5",
+    "nameId": 7,
+    "version": "5.20260707",
+    "userAgent": "Mozilla/5.0 (SMART-TV; Linux; Tizen 2.4.0) AppleWebKit/538.1 (KHTML, like Gecko) Version/2.4.0 TV Safari/538.1",
+    "context": {
+      "deviceMake": "Samsung",
+      "deviceModel": "UKS9800",
+      "osName": "Tizen",
+      "osVersion": "2.4.0"
+    },
+    "host": "www.youtube.com",
+    "rootContext": {},
+    "embed": false,
+    "requiresJs": true
+  },
+  {
+    "key": "web_embedded",
+    "name": "WEB_EMBEDDED_PLAYER",
+    "nameId": 56,
+    "version": "2.20260708.00.00",
+    "userAgent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/15.5 Safari/605.1.15,gzip(gfe)",
+    "context": {},
+    "host": "www.youtube.com",
+    "rootContext": {
+      "thirdParty": {
+        "embedUrl": "https://www.reddit.com/"
+      }
+    },
+    "embed": true,
+    "requiresJs": true
+  },
+  {
+    "key": "android_vr",
+    "name": "ANDROID_VR",
+    "nameId": 28,
+    "version": "1.65.10",
+    "userAgent": "com.google.android.apps.youtube.vr.oculus/1.65.10 (Linux; U; Android 12L; eureka-user Build/SQ3A.220605.009.A1) gzip",
+    "context": {
+      "androidSdkVersion": 32,
+      "deviceMake": "Oculus",
+      "deviceModel": "Quest 3",
+      "osName": "Android",
+      "osVersion": "12L"
+    },
+    "host": "www.youtube.com",
+    "rootContext": {},
+    "embed": false,
+    "requiresJs": false
+  }
+]
